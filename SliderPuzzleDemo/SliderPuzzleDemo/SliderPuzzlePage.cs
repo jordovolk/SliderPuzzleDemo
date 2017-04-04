@@ -11,7 +11,7 @@ namespace SliderPuzzleDemo
         private const int SIZE = 4;
         private AbsoluteLayout _absoluteLayout;
         private Dictionary<GridPosition, GridItem> _gridItems;
-        
+
 
         //constructor
         public SliderPuzzlePage()
@@ -19,29 +19,46 @@ namespace SliderPuzzleDemo
             _gridItems = new Dictionary<GridPosition, GridItem>();
             _absoluteLayout = new AbsoluteLayout
             {
-                
+
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center
             };
 
             var counter = 1;
-            for(var row = 0; row < SIZE; row++)
+            for (var row = 0; row < SIZE; row++)
             {
-                for(var col = 0; col < SIZE; col++)
+                for (var col = 0; col < SIZE; col++)
                 {
+                    GridItem item;
+                    if (counter == 16)
+                    {
 
-                    GridItem item = new GridItem(new GridPosition(row, col), counter.ToString());
-       
+                        item = new GridItem(new GridPosition(row, col), "empty");
+                        item.FinalImage = "16";
+                    }
+
+                    else
+                    {
+                        item = new GridItem(new GridPosition(row, col), counter.ToString());
+
+                    }
+
+
                     var tapRecognizer = new TapGestureRecognizer();
                     tapRecognizer.Tapped += OnLabelTapped;
                     item.GestureRecognizers.Add(tapRecognizer);
 
-                    _gridItems.Add(item.Position, item);
+                    _gridItems.Add(item.CurrentPosition, item);
                     _absoluteLayout.Children.Add(item);
 
                     counter++;
                 }
             }
+
+            //Shuffle();
+            // Shuffle();
+            //Shuffle();
+            // Shuffle();
 
             ContentView contentView = new ContentView
             {
@@ -50,7 +67,27 @@ namespace SliderPuzzleDemo
             contentView.SizeChanged += OnContentViewSizeChanged;
             this.Padding = new Thickness(5, Device.OnPlatform(25, 5, 5), 5, 5);
             this.Content = contentView;
-  
+        }
+
+
+
+
+        private void Shuffle()
+        {
+            Random rand = new Random();
+            for (var row = 0; row < SIZE; row++)
+            {
+                for (var col = 0; col < SIZE; col++)
+                {
+                    GridItem item = _gridItems[new GridPosition(row, col)];
+
+                    int SwapRow = rand.Next(0, 4);
+                    int SwapCol = rand.Next(0, 4);
+                    GridItem swapItem = _gridItems[new GridPosition(SwapRow, SwapCol)];
+
+                    swap(item, swapItem);
+                }
+            }
         }
 
         private void OnContentViewSizeChanged(object sender, EventArgs e)
@@ -58,9 +95,9 @@ namespace SliderPuzzleDemo
             ContentView contentView = (ContentView)sender;
             double squareSize = Math.Min(contentView.Width, contentView.Height) / SIZE;
 
-            for(var row = 0; row < SIZE; row++)
+            for (var row = 0; row < SIZE; row++)
             {
-                for(var col = 0; col < SIZE; col++)
+                for (var col = 0; col < SIZE; col++)
                 {
                     GridItem item = _gridItems[new GridPosition(row, col)];
                     Rectangle rect = new Rectangle(col * squareSize, row * squareSize, squareSize, squareSize);
@@ -73,82 +110,198 @@ namespace SliderPuzzleDemo
         private void OnLabelTapped(object sender, EventArgs args)
         {
             GridItem item = (GridItem)sender;
-            Random rand = new Random();
-            int move = rand.Next(0, 4);
-            //adjust random move to account for edges
-            //if im trying to move up and position is in top row move down
-            if (move == 0 && item.Position.Row == 0)
+
+            int row = 0;
+            int col = 0;
+
+            //did we click on empty? if so do nothing
+            if (item.isEmptySpot() == true)
             {
-                move = 2;
-            }
-           else if(move == 1 && item.Position.Column == SIZE - 1) //try to move right
-            {
-                move = 3; //instead move left
-            }
-           else if (move == 2 && item.Position.Row == SIZE - 1) //try to move down
-            {
-                move = 0; //instead move up
-            }
-           else if(move == 3 && item.Position.Column == 0) //try to move left
-            {
-                move = 1; //instead move right
+                return;
             }
 
-            int row = item.Position.Row;
-            int col = item.Position.Column;
 
-            if(move == 0)
+
+
+
+
+
+
+
+
+
+
+            //we know we didnt click on empty spot
+
+            //check up, down, left, right until we find empty
+            var counter = 0;
+
+            while (counter < 4)
             {
-                row = row - 1;
+
+                GridPosition pos = null;
+                if (counter == 0 && item.CurrentPosition.Row != 0)
+                {
+                    // Get position of square above current item
+                    pos = new GridPosition(item.CurrentPosition.Row - 1, item.CurrentPosition.Column);
+                }
+
+                else if (counter == 1 && item.CurrentPosition.Column != SIZE - 1)
+                {
+                    // Get position of square to right of current item
+                    pos = new GridPosition(item.CurrentPosition.Row, item.CurrentPosition.Column + 1);
+                }
+                else if (counter == 2 && item.CurrentPosition.Row != SIZE - 1)
+                {
+                    // Get position of square below current item
+                    pos = new GridPosition(item.CurrentPosition.Row + 1, item.CurrentPosition.Column);
+                }
+                else if (counter == 3 && item.CurrentPosition.Column != 0)
+                {
+                    // Get position of square to left of current item
+                    pos = new GridPosition(item.CurrentPosition.Row, item.CurrentPosition.Column - 1);
+                }
+
+                if (pos != null) //dont have to check because of edge
+                {
+
+
+
+                    GridItem swapWith = _gridItems[pos];
+                    if (swapWith.isEmptySpot())
+                    {
+                        swap(item, swapWith);
+                        if(isPuzzleWon())
+                        {
+                            swapWith.ShowFinalImage();
+                           
+
+                        }
+                        break;
+                    }
+
+               
+
+
+
+                }
+                counter++;
 
             }
-            else if(move == 1)
-            {
-                col = col + 1;
-            }
-            else if(move == 2)
-            {
-                row = row + 1;
-            }
 
-            else
-            {
-                col = col - 1;
-            }
-            GridItem swapWith = _gridItems[new GridPosition(row, col)];
-            swap(item, swapWith);
+
+
+
+
             OnContentViewSizeChanged(this.Content, null);
+
         }
 
-        void swap (GridItem item1, GridItem item2)
-        {
-            GridPosition temp = item1.Position;
-            item1.Position = item2.Position;
-            item2.Position = temp;
+       
 
-            _gridItems[item1.Position] = item1;
-            _gridItems[item2.Position] = item2;
+
+        public Boolean isPuzzleWon()
+        {
+            Boolean won = true;
+            for (var row = 0; row < SIZE; row++)
+            {
+                for (var col = 0; col < SIZE; col++)
+                {
+                    GridItem item = _gridItems[new GridPosition(row, col)];
+                    if (!item.isPositionCorrect())
+                    {
+                        won = false;
+                        break;
+                    }
+                }
+            }
+
+            return won;
+        }
+
+
+        void swap(GridItem item1, GridItem item2)
+        {
+            GridPosition temp = item1.CurrentPosition;
+            item1.CurrentPosition = item2.CurrentPosition;
+            item2.CurrentPosition = temp;
+
+            _gridItems[item1.CurrentPosition] = item1;
+            _gridItems[item2.CurrentPosition] = item2;
         }
 
         internal class GridItem : Image
         {
-            public GridPosition Position
+            public GridPosition CurrentPosition
+            {
+                get; set;
+            }
+            private GridPosition _FinalPosition;
+            private Boolean _isEmptySpot;
+            public String FinalImage
             {
                 get; set;
             }
 
             public GridItem(GridPosition position, String src)
             {
-                Position = position;
+                _FinalPosition = position;
+                CurrentPosition = position;
                 String path = "SliderPuzzleDemo." + src + ".jpeg";
                 Source = ImageSource.FromResource(path);
-                
+                if (src == "empty")
+                {
+                    _isEmptySpot = true;
 
+
+
+                }
+
+                else
+                {
+                    _isEmptySpot = false;
+                }
+                BackgroundColor = Color.Black;
 
                 HorizontalOptions = LayoutOptions.FillAndExpand;
                 VerticalOptions = LayoutOptions.FillAndExpand;
             }
+
+            public void ShowFinalImage()
+            {
+            
+                
+                String path = "SliderPuzzleDemo." + "16" + ".jpeg";
+                Source = ImageSource.FromResource(path);
+
+
+
+            }
+
+            
+            
+
+  
+            public Boolean isEmptySpot()
+            {
+                return _isEmptySpot;
+            }
+
+
+
+            public Boolean isPositionCorrect()
+            {
+
+
+
+                return _FinalPosition.Equals(CurrentPosition);
+            }
+
         }
+
+
+
+
 
         internal class GridPosition
         {
@@ -162,7 +315,7 @@ namespace SliderPuzzleDemo
                 Column = col;
             }
 
-          
+
 
             public override bool Equals(object obj)
             {
@@ -179,7 +332,11 @@ namespace SliderPuzzleDemo
             {
                 return 17 * (23 + this.Row.GetHashCode()) * (23 + this.Column.GetHashCode());
             }
-        }
 
+
+        }
     }
 }
+
+    
+
