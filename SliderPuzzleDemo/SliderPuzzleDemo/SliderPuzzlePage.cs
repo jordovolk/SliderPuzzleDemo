@@ -11,7 +11,7 @@ namespace SliderPuzzleDemo
         private const int SIZE = 4;
         private AbsoluteLayout _absoluteLayout;
         private Dictionary<GridPosition, GridItem> _gridItems;
-
+        string final;
         //constructor
         public SliderPuzzlePage()
         {
